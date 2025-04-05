@@ -1,0 +1,8 @@
+arxiv==1.4.8
+openai==1.12.0
+python-dotenv==1.0.0
+schedule==1.2.1
+pandas==2.2.0
+google-generativeai==0.3.2
+google-genai
+pytz==2024.1
