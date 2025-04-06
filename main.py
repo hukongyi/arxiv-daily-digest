@@ -139,12 +139,21 @@ def send_email(summaries):
 
     html_content += f"""
         <div class="footer">
-            <p>此邮件由arXiv论文自动总结系统发送，使用模型{GEMINI_MODEL}总结，如有问题请联系管理员（<a href="mailto:hukongyi@ihep.ac.cn">hukongyi@ihep.ac.cn</a>）。</p>
-            <p>如需退订，请发送退订至<a href="mailto:hukongyi@ihep.ac.cn">hukongyi@ihep.ac.cn</a>并注明'退订'。</p>
+            <p>此邮件由arXiv论文自动总结系统发送，使用模型{GEMINI_MODEL}总结，如有问题请联系管理员。</p>
+            <p>如需退订，请回复并注明'退订'。</p>
         </div>
     </body>
     </html>
     """
+
+    # html_content += f"""
+    #     <div class="footer">
+    #         <p>此邮件由arXiv论文自动总结系统发送，使用模型{GEMINI_MODEL}总结，如有问题请联系管理员（<a href="mailto:hukongyi@ihep.ac.cn">hukongyi@ihep.ac.cn</a>）。</p>
+    #         <p>如需退订，请发送退订至<a href="mailto:hukongyi@ihep.ac.cn">hukongyi@ihep.ac.cn</a>并注明'退订'。</p>
+    #     </div>
+    # </body>
+    # </html>
+    # """
 
     # 添加纯文本版本（作为备用）
     text_content = "今日论文总结：\n\n"
