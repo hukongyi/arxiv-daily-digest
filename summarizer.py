@@ -24,18 +24,17 @@ class PaperSummarizer:
         title = paper.get("title", "N/A")
         authors = ", ".join(paper.get("authors", ["N/A"]))
         abstract = paper.get("abstract", "N/A")
-        
+
         # 检查是否有全文可用
         has_full_text = 'full_text' in paper and paper['full_text'] and len(paper['full_text']) > 200
-        
+
         # 根据配置和全文可用性决定使用哪种提示
         if FULL_TEXT_ANALYSIS and has_full_text:
-            # 提取全文的前3000个字符和后1000个字符作为上下文
             full_text = paper['full_text']
-            
+
             prompt = f"""
     请扮演一位专业的科研助理。
-    你的任务是根据下面提供的论文信息（标题、作者、摘要、引言和结论部分），用简洁、专业的中文进行总结和评分。
+    你的任务是根据下面提供的论文信息（标题、作者、摘要、全文），用简洁、专业的中文进行总结和评分。
 
     **输入信息:**
     标题：{title}
@@ -51,15 +50,15 @@ class PaperSummarizer:
     3.  主要创新点: (总结论文相比现有研究的新颖之处或独特贡献)
     4.  主要结论: (总结论文得出的最重要研究结果、发现或核心观点)
     5.  研究意义: (总结该研究的理论价值、潜在应用前景或对相关领域的贡献)
-    
-    第二部分：请对论文进行评分（1-10分），并简要说明理由：
-    
-    6.  论文评分: (1-10分，10分为最高)
+
+    第二部分：请对论文进行评分（1-100分），并简要说明理由：
+
+    6.  论文评分: (1-100分，100分为最高)
     7.  评分理由: (简要说明评分理由，包括创新性、方法学严谨性、结果可靠性和影响力等方面)
 
     **格式与约束:**
     *   语言：简体中文。
-    *   篇幅：每个部分的内容**严格限制在100字以内**。
+    *   篇幅：每个部分的内容**严格限制在200字以内**。
     *   格式：**仅输出**编号和对应内容（例如："1. 主要研究目标: [内容]"），每个部分占一行。**绝对不要包含任何**引言、结语、问候语、解释性文字或任何与要求格式无关的内容。直接开始输出 "1. 主要研究目标: ..."。
     """
         else:
@@ -81,15 +80,15 @@ class PaperSummarizer:
     3.  主要创新点: (总结论文相比现有研究的新颖之处或独特贡献)
     4.  主要结论: (总结论文得出的最重要研究结果、发现或核心观点)
     5.  研究意义: (总结该研究的理论价值、潜在应用前景或对相关领域的贡献)
-    
-    第二部分：请对论文进行评分（1-10分），并简要说明理由：
-    
-    6.  论文评分: (1-10分，10分为最高，评分的平均分应为5分)
+
+    第二部分：请对论文进行评分（1-100分），并简要说明理由：
+
+    6.  论文评分: (1-100分，100分为最高)
     7.  评分理由: (简要说明评分理由，包括创新性、方法学严谨性、结果可靠性和影响力等方面)
 
     **格式与约束:**
     *   语言：简体中文。
-    *   篇幅：每个部分的内容**严格限制在100字以内**。
+    *   篇幅：每个部分的内容**严格限制在200字以内**。
     *   格式：**仅输出**编号和对应内容（例如："1. 主要研究目标: [内容]"），每个部分占一行。**绝对不要包含任何**引言、结语、问候语、解释性文字或任何与要求格式无关的内容。直接开始输出 "1. 主要研究目标: ..."。
     """
 
@@ -121,10 +120,10 @@ class PaperSummarizer:
                 self._update_client()
                 return self.summarize_paper(paper)
             print(response)
-            
+
             # 提取评分
             rating = self._extract_rating(response)
-            
+
             return {
                 "summary_text": response,
                 "rating": rating
@@ -135,32 +134,32 @@ class PaperSummarizer:
             # 如果出错，尝试使用另一个API key
             self._update_client()
             return self.summarize_paper(paper)
-    
+
     def _extract_rating(self, summary_text):
         """从总结文本中提取评分"""
         try:
             # 使用正则表达式查找评分行
-            rating_match = re.search(r'6\.\s*论文评分:\s*(\d+(?:\.\d+)?)', summary_text)
+            rating_match = re.search(r'6\.\s*论文评分:\s*(\d+)', summary_text)
             if rating_match:
-                rating = float(rating_match.group(1))
-                # 确保评分在1-10范围内
-                rating = max(1, min(10, rating))
+                rating = int(rating_match.group(1))
+                # 确保评分在1-100范围内
+                rating = max(1, min(100, rating))
                 return rating
-            return 5.0  # 如果无法提取评分，返回默认值
+            return 50  # 如果无法提取评分，返回默认值
         except Exception as e:
             print(f"提取评分失败: {str(e)}")
-            return 5.0  # 出错时返回默认值
+            return 50  # 出错时返回默认值
 
     def generate_daily_report(self, papers):
         """生成每日报告"""
         summaries = []
         for paper in papers:
             summary_result = self.summarize_paper(paper)
-            
+
             # 提取摘要文本和评分
             summary_text = summary_result.get("summary_text", "")
-            rating = summary_result.get("rating", 5.0)
-            
+            rating = summary_result.get("rating", 50)
+
             summaries.append(
                 {
                     "title": paper["title"],
@@ -168,13 +167,14 @@ class PaperSummarizer:
                     "arxiv_id": paper["arxiv_id"],
                     "pdf_url": paper["pdf_url"],
                     "published": paper.get("published", "N/A"),
+                    "abstract": paper.get("abstract", ""),
                     "summary": summary_text,
                     "rating": rating,
                     "pdf_path": paper.get("pdf_path", None),
                 }
             )
-        
+
         # 按评分排序（从高到低）
         summaries.sort(key=lambda x: x.get("rating", 0), reverse=True)
-        
+
         return summaries

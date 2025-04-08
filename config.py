@@ -45,6 +45,11 @@ for i in range(1, 101):  # 支持最多100个API密钥
     else:
         break
 
+# 并行处理配置
+USE_PARALLEL = os.getenv("USE_PARALLEL", "True").lower() == "true"  # 是否使用并行处理
+USE_BATCH_PARALLEL = os.getenv("USE_BATCH_PARALLEL", "True").lower() == "true"  # 是否使用批处理
+MAX_WORKERS = int(os.getenv("MAX_WORKERS", "0"))  # 最大工作线程数，0表示使用所有可用的API密钥
+BATCH_SIZE = int(os.getenv("BATCH_SIZE", "10"))  # 每批处理的论文数量
 
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.0-flash-thinking-exp-01-21")
 

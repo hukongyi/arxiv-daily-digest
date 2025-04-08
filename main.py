@@ -10,12 +10,14 @@ from email.utils import formataddr
 from datetime import datetime
 from arxiv_scraper import ArxivScraper
 from summarizer import PaperSummarizer
+from parallel_summarizer import ParallelPaperSummarizer, BatchParallelPaperSummarizer
 from pdf_downloader import PDFDownloader
 from pdf_extractor import PDFExtractor
 from config import (
     EMAIL_CONFIG, SCHEDULE_TIME, DEBUG_MODE, DAYS_BACK,
     GEMINI_MODEL, ARXIV_CONFIG, DOWNLOAD_PDFS, FULL_TEXT_ANALYSIS,
-    PDF_MAX_PAGES, PDF_BASE_DIR, PDF_DB_FILE, USE_OCR_FALLBACK, ORGANIZE_BY_DATE
+    PDF_MAX_PAGES, PDF_BASE_DIR, PDF_DB_FILE, USE_OCR_FALLBACK, ORGANIZE_BY_DATE,
+    USE_PARALLEL, USE_BATCH_PARALLEL, MAX_WORKERS, BATCH_SIZE
 )
 
 
@@ -95,11 +97,25 @@ def send_email(summaries, category_info):
                 font-size: 14px;
                 margin-bottom: 10px;
             }}
+            .paper-abstract {{
+                background-color: #f0f8ff;
+                padding: 10px;
+                border-radius: 3px;
+                margin-bottom: 10px;
+            }}
             .paper-summary {{
                 background-color: #f9f9f9;
                 padding: 10px;
                 border-radius: 3px;
                 margin-top: 10px;
+            }}
+            details summary {{
+                cursor: pointer;
+                font-weight: bold;
+            }}
+            details p {{
+                margin-top: 10px;
+                line-height: 1.5;
             }}
             .paper-rating {{
                 display: inline-block;
@@ -149,20 +165,20 @@ def send_email(summaries, category_info):
     """
 
     for paper in summaries:
-        summary = paper["summary"].replace("\n", "<br>")
+        summary = paper["summary"].replace("\n", "<br>").replace("  ", "&nbsp;")
 
         # 根据评分决定样式类名
-        rating = paper.get('rating', 5.0)
+        rating = paper.get('rating', 50)
         rating_class = "rating-medium"
-        if rating >= 8.0:
+        if rating >= 90:
             rating_class = "rating-high"
-        elif rating <= 4.0:
+        elif rating <= 60:
             rating_class = "rating-low"
 
         html_content += f"""
         <div class="paper">
             <div class="paper-title">
-                <span class="paper-rating {rating_class}">{rating}/10</span>
+                <span class="paper-rating {rating_class}">{rating}/100</span>
                 {paper['title']}
             </div>
             <div class="paper-meta">
@@ -170,6 +186,12 @@ def send_email(summaries, category_info):
                 <strong>arXiv ID：</strong>{paper['arxiv_id']}<br>
                 <strong>发表日期：</strong>{paper['published']}<br>
                 <strong>PDF链接：</strong><a href="{paper['pdf_url']}">{paper['pdf_url']}</a>
+            </div>
+            <div class="paper-abstract">
+                <details>
+                    <summary>原文摘要</summary>
+                    <p>{paper.get('abstract', '无摘要')}</p>
+                </details>
             </div>
             <div class="paper-summary">
                 <strong>总结：</strong><br>
@@ -199,13 +221,14 @@ def send_email(summaries, category_info):
     # 添加纯文本版本（作为备用）
     text_content = "今日论文总结（按评分排序）：\n\n"
     for paper in summaries:
-        rating = paper.get('rating', 5.0)
-        text_content += f"评分：{rating}/10\n"
+        rating = paper.get('rating', 50)
+        text_content += f"评分：{rating}/100\n"
         text_content += f"标题：{paper['title']}\n"
         text_content += f"作者：{', '.join(paper['authors'])}\n"
         text_content += f"arXiv ID：{paper['arxiv_id']}\n"
         text_content += f"发表日期：{paper['published']}\n"
         text_content += f"PDF链接：{paper['pdf_url']}\n"
+        text_content += f"\n原文摘要：\n{paper.get('abstract', '无摘要')}\n"
         text_content += f"\n总结：\n{paper['summary']}\n"
         text_content += "\n" + "=" * 50 + "\n\n"
 
@@ -260,7 +283,19 @@ def run_task():
 
     # 初始化组件
     scraper = ArxivScraper()
-    summarizer = PaperSummarizer()
+
+    # 选择要使用的总结器
+    if USE_PARALLEL:
+        if USE_BATCH_PARALLEL:
+            print(f"使用批处理并行总结器，批大小: {BATCH_SIZE}, 最大线程数: {MAX_WORKERS if MAX_WORKERS > 0 else '自动'}")
+            summarizer = BatchParallelPaperSummarizer(max_workers=MAX_WORKERS or None, batch_size=BATCH_SIZE)
+        else:
+            print(f"使用并行总结器，最大线程数: {MAX_WORKERS if MAX_WORKERS > 0 else '自动'}")
+            summarizer = ParallelPaperSummarizer(max_workers=MAX_WORKERS or None)
+    else:
+        print("使用串行总结器")
+        summarizer = PaperSummarizer()
+
     pdf_downloader = None
     pdf_extractor = None
 

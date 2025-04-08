@@ -8,7 +8,7 @@
 - 自动下载论文PDF并提取全文内容
 - 使用 Google Gemini AI 生成论文总结
 - 对论文进行评分（1-10分）并按评分排序
-- 支持多个 API 密钥轮换使用
+- 支持多个 API 密钥并行使用，提高处理效率
 - 每日定时发送邮件报告
 - 可配置的论文主题和关键词
 - 支持自定义运行时间
@@ -49,6 +49,15 @@
      # Gemini API配置
      GEMINI_API_KEY_1=你的Gemini API密钥1
      GEMINI_API_KEY_2=你的Gemini API密钥2
+     GEMINI_API_KEY_3=你的Gemini API密钥3
+     # 可以添加更多API密钥，从1开始编号
+
+     # 并行处理配置
+     USE_PARALLEL=True
+     USE_BATCH_PARALLEL=True
+     MAX_WORKERS=0
+     BATCH_SIZE=10
+
      GEMINI_MODEL=gemini-2.0-flash-thinking-exp-01-21
 
      # 邮件配置
@@ -80,8 +89,14 @@
 - `USE_OCR_FALLBACK`：当PDF文本提取失败时是否使用OCR（默认为False）
 
 **Gemini API配置：**
-- `GEMINI_API_KEY_1`, `GEMINI_API_KEY_2`, ...：Gemini API 密钥，支持多个密钥轮换使用
+- `GEMINI_API_KEY_1`, `GEMINI_API_KEY_2`, ...：Gemini API 密钥，支持多个密钥并行使用
 - `GEMINI_MODEL`：使用的 Gemini 模型名称
+
+**并行处理配置：**
+- `USE_PARALLEL`：是否使用并行处理（默认为True）
+- `USE_BATCH_PARALLEL`：是否使用批处理（默认为True）
+- `MAX_WORKERS`：最大工作线程数，0表示使用所有可用的API密钥（默认为0）
+- `BATCH_SIZE`：每批处理的论文数量（默认为10）
 
 **邮件配置：**
 - `SMTP_SERVER`：邮件服务器地址
