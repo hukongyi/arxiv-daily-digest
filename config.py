@@ -20,17 +20,17 @@ USE_OCR_FALLBACK = os.getenv("USE_OCR_FALLBACK", "False").lower() == "true"  # �
 # arXiv 配置
 ARXIV_CONFIG = {
     "search_queries": [
-        # {
-        #     # "query": "cat:cs.AI OR cat:cs.CL OR cat:cs.HC OR cat:cs.CV OR cat:cs.LG OR cat:cs.NE OR cat:cs.IR OR cat:cs.CY OR cat:cs.DC OR cs.SE OR cs.RO",  # 计算机科学
-        #     "query": "cat:cs.AI OR cat:cs.CL cat:cs.LG",  # 计算机科学
-        #     "name": "计算机科学",
-        # },
         {
-            "query": "cat:astro-ph.HE",  # 高能天体物理
-            "name": "高能天体物理论文",
+            # "query": "cat:cs.AI OR cat:cs.CL OR cat:cs.HC OR cat:cs.CV OR cat:cs.LG OR cat:cs.NE OR cat:cs.IR OR cat:cs.CY OR cat:cs.DC OR cs.SE OR cs.RO",  # 计算机科学
+            "query": "cat:cs.AI OR cat:cs.CL cat:cs.LG",  # 计算机科学
+            "name": "计算机科学",
         },
+        # {
+        #     "query": "cat:astro-ph.HE",  # 高能天体物理
+        #     "name": "高能天体物理论文",
+        # },
     ],  # 可配置多个搜索主题
-    "max_results": 100,  # 每次获取的论文数量
+    "max_results": 1000,  # 每次获取的论文数量
     "sort_by": "submittedDate",
     "sort_order": "descending",
 }

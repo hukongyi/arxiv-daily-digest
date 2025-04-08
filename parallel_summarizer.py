@@ -161,7 +161,7 @@ class ParallelPaperSummarizer:
                 if not response.strip():
                     if attempt < max_retries - 1:
                         print(f"API响应为空，重试 ({attempt+1}/{max_retries})...")
-                        time.sleep(2)
+                        time.sleep(60)
                         continue
                     else:
                         return {"summary_text": "API响应为空，请稍后重试。", "rating": 50}
@@ -179,7 +179,7 @@ class ParallelPaperSummarizer:
                 print(f"线程 {client_index} 总结失败: {str(e)}")
                 if attempt < max_retries - 1:
                     print(f"重试 ({attempt+1}/{max_retries})...")
-                    time.sleep(2)
+                    time.sleep(60)
                 else:
                     return {
                         "summary_text": f"总结失败: {str(e)}",
@@ -314,8 +314,8 @@ class BatchParallelPaperSummarizer(ParallelPaperSummarizer):
 
             # 在批次之间添加延时，避免API限制
             if i + self.batch_size < total_papers:
-                print("批次处理完成，等待5秒后处理下一批...")
-                time.sleep(5)
+                print("批次处理完成，等待60秒后处理下一批...")
+                time.sleep(60)
 
         # 按评分排序（从高到低）
         all_summaries.sort(key=lambda x: x.get("rating", 0), reverse=True)

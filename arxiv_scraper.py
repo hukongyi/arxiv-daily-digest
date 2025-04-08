@@ -37,7 +37,7 @@ class ArxivScraper:
             paper_date = result.published
             if not paper_date.tzinfo:
                 paper_date = utc.localize(paper_date)
-
+            print(paper_date)
             if start_date <= paper_date <= end_date:
                 count += 1
                 print(f"Found paper_{count} for {search_query['name']}: {result.title}")
