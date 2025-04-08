@@ -5,6 +5,7 @@
 .venv/
 venv/
 ENV/
+.git/
 
 # Python缓存文件
 __pycache__/
@@ -13,7 +14,10 @@ __pycache__/
 
 # 日志文件
 *.log
+*.out
 
 # 系统文件
 .DS_Store
 Thumbs.db 
+
+papers/

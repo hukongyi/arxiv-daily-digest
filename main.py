@@ -1,6 +1,8 @@
 import schedule
 import time
 import smtplib
+import os
+import shutil
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.header import Header
@@ -8,33 +10,40 @@ from email.utils import formataddr
 from datetime import datetime
 from arxiv_scraper import ArxivScraper
 from summarizer import PaperSummarizer
-from config import EMAIL_CONFIG, SCHEDULE_TIME, DEBUG_MODE, DAYS_BACK, GEMINI_MODEL
+from pdf_downloader import PDFDownloader
+from pdf_extractor import PDFExtractor
+from config import (
+    EMAIL_CONFIG, SCHEDULE_TIME, DEBUG_MODE, DAYS_BACK,
+    GEMINI_MODEL, ARXIV_CONFIG, DOWNLOAD_PDFS, FULL_TEXT_ANALYSIS,
+    PDF_MAX_PAGES, PDF_BASE_DIR, PDF_DB_FILE, USE_OCR_FALLBACK, ORGANIZE_BY_DATE
+)
 
 
-def send_email(summaries):
-    """发送邮件"""
+def send_email(summaries, category_info):
+    """发送邮件
+
+    Args:
+        summaries (list): 论文总结列表
+        category_info (dict): 包含category name和description的字典
+    """
     msg = MIMEMultipart("alternative")
 
-    # 使用formataddr正确格式化发件人和收件人
     sender_name = "arXiv论文助手"
     sender_email = EMAIL_CONFIG["sender_email"]
     receiver_emails = EMAIL_CONFIG["receiver_emails"]
 
     msg["From"] = formataddr((sender_name, sender_email))
 
-    # 处理多个收件人
     if isinstance(receiver_emails, list):
-        # 将多个收件人格式化为字符串
-        formatted_receivers = []
-        for email in receiver_emails:
-            formatted_receivers.append(formataddr(("", email)))
+        formatted_receivers = [formataddr(("", email)) for email in receiver_emails]
         msg["To"] = ", ".join(formatted_receivers)
     else:
-        # 兼容单个收件人的情况
         msg["To"] = formataddr(("", receiver_emails))
 
+    # 修改邮件主题，加入分类信息
     msg["Subject"] = Header(
-        f"arXiv论文日报 - {datetime.now().strftime('%Y-%m-%d')}", "utf-8"
+        f"arXiv {category_info['name']} - {datetime.now().strftime('%Y-%m-%d')}",
+        "utf-8"
     )
 
     # 添加邮件头信息
@@ -44,7 +53,7 @@ def send_email(summaries):
     msg["X-Mailer"] = "arXiv Paper Summarizer"
     msg["List-Unsubscribe"] = f"<mailto:{sender_email}?subject=unsubscribe>"
 
-    # 构建HTML邮件内容
+    # 修改HTML内容头部，加入分类描述
     html_content = f"""
     <!DOCTYPE html>
     <html>
@@ -92,6 +101,25 @@ def send_email(summaries):
                 border-radius: 3px;
                 margin-top: 10px;
             }}
+            .paper-rating {{
+                display: inline-block;
+                background-color: #4285f4;
+                color: white;
+                font-weight: bold;
+                padding: 3px 8px;
+                border-radius: 12px;
+                margin-right: 10px;
+                font-size: 14px;
+            }}
+            .rating-high {{
+                background-color: #0f9d58; /* 绿色 */
+            }}
+            .rating-medium {{
+                background-color: #4285f4; /* 蓝色 */
+            }}
+            .rating-low {{
+                background-color: #db4437; /* 红色 */
+            }}
             .footer {{
                 margin-top: 30px;
                 padding-top: 15px;
@@ -115,15 +143,28 @@ def send_email(summaries):
     </head>
     <body>
         <div class="header">
-            <h2>arXiv论文日报 - {datetime.now().strftime('%Y-%m-%d')}</h2>
+            <h2>arXiv {category_info['name']} - {datetime.now().strftime('%Y-%m-%d')}</h2>
+            <p>{category_info.get('description', '')}</p>
         </div>
     """
 
     for paper in summaries:
         summary = paper["summary"].replace("\n", "<br>")
+
+        # 根据评分决定样式类名
+        rating = paper.get('rating', 5.0)
+        rating_class = "rating-medium"
+        if rating >= 8.0:
+            rating_class = "rating-high"
+        elif rating <= 4.0:
+            rating_class = "rating-low"
+
         html_content += f"""
         <div class="paper">
-            <div class="paper-title">{paper['title']}</div>
+            <div class="paper-title">
+                <span class="paper-rating {rating_class}">{rating}/10</span>
+                {paper['title']}
+            </div>
             <div class="paper-meta">
                 <strong>作者：</strong>{', '.join(paper['authors'])}<br>
                 <strong>arXiv ID：</strong>{paper['arxiv_id']}<br>
@@ -156,8 +197,10 @@ def send_email(summaries):
     # """
 
     # 添加纯文本版本（作为备用）
-    text_content = "今日论文总结：\n\n"
+    text_content = "今日论文总结（按评分排序）：\n\n"
     for paper in summaries:
+        rating = paper.get('rating', 5.0)
+        text_content += f"评分：{rating}/10\n"
         text_content += f"标题：{paper['title']}\n"
         text_content += f"作者：{', '.join(paper['authors'])}\n"
         text_content += f"arXiv ID：{paper['arxiv_id']}\n"
@@ -215,20 +258,47 @@ def run_task():
     """执行任务"""
     print(f"开始执行任务 - {datetime.now()}")
 
-    # 获取论文
+    # 初始化组件
     scraper = ArxivScraper()
-    papers = scraper.get_papers(days_back=DAYS_BACK)
-
-    if not papers:
-        print("今日没有新论文")
-        return
-
-    # 生成总结
     summarizer = PaperSummarizer()
-    summaries = summarizer.generate_daily_report(papers)
+    pdf_downloader = None
+    pdf_extractor = None
 
-    # 发送邮件
-    send_email(summaries)
+    # 如果启用了PDF下载和分析
+    if DOWNLOAD_PDFS:
+        pdf_downloader = PDFDownloader(base_dir=PDF_BASE_DIR, db_file=PDF_DB_FILE)
+        pdf_extractor = PDFExtractor(ocr_fallback=USE_OCR_FALLBACK, max_pages=PDF_MAX_PAGES)
+
+    try:
+        # 为每个搜索主题获取并发送论文
+        for search_query in ARXIV_CONFIG["search_queries"]:
+            print(f"处理分类: {search_query['name']}")
+
+            # 获取该主题的论文
+            papers = scraper.get_papers(search_query, days_back=DAYS_BACK)
+
+            if not papers:
+                print(f"{search_query['name']} 今日没有新论文")
+                continue
+
+            # 如果启用了PDF下载和分析
+            if DOWNLOAD_PDFS and pdf_downloader and pdf_extractor:
+                print("开始下载论文PDF...")
+                # 下载PDF
+                papers = pdf_downloader.download_papers(papers)
+
+                # 提取PDF文本
+                print("开始提取PDF文本...")
+                papers = pdf_extractor.process_papers(papers)
+
+            # 生成总结
+            summaries = summarizer.generate_daily_report(papers)
+
+            # 发送邮件
+            send_email(summaries, search_query)
+    finally:
+        # 在处理不同主题之间添加延时，避免API限制
+        time.sleep(5)
 
 
 def main():
@@ -241,10 +311,8 @@ def main():
         print("任务执行完成！")
     else:
         print(f"正常模式：将在每天 {SCHEDULE_TIME} 执行任务")
-        # 设置定时任务
         schedule.every().day.at(SCHEDULE_TIME).do(run_task)
 
-        # 运行定时任务
         while True:
             schedule.run_pending()
             time.sleep(60)

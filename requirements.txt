@@ -6,3 +6,8 @@ pandas==2.2.0
 google-generativeai==0.3.2
 google-genai
 pytz==2024.1
+requests==2.31.0
+PyMuPDF==1.23.22
+# 可选的OCR支持
+pdf2image==1.17.0
+pytesseract==0.3.10

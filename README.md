@@ -5,7 +5,9 @@
 ## 功能特点
 
 - 自动获取 arXiv 最新论文
+- 自动下载论文PDF并提取全文内容
 - 使用 Google Gemini AI 生成论文总结
+- 对论文进行评分（1-10分）并按评分排序
 - 支持多个 API 密钥轮换使用
 - 每日定时发送邮件报告
 - 可配置的论文主题和关键词
@@ -31,19 +33,31 @@
      # 调试模式配置
      DEBUG_MODE=False
      DAYS_BACK=2
-     
+
+     # PDF处理配置
+     DOWNLOAD_PDFS=True
+     FULL_TEXT_ANALYSIS=True
+     PDF_MAX_PAGES=20
+     # PDF保存目录和数据库文件
+     PDF_BASE_DIR=./papers
+     # PDF_DB_FILE=./papers/pdf_database.json
+     # 是否按日期组织文件夹（年/月/日）
+     ORGANIZE_BY_DATE=True
+     # 是否在PDF提取失败时使用OCR
+     USE_OCR_FALLBACK=False
+
      # Gemini API配置
      GEMINI_API_KEY_1=你的Gemini API密钥1
      GEMINI_API_KEY_2=你的Gemini API密钥2
      GEMINI_MODEL=gemini-2.0-flash-thinking-exp-01-21
-     
+
      # 邮件配置
      SMTP_SERVER=smtp.qq.com
      SMTP_PORT=465
      SENDER_EMAIL=你的发件人邮箱
      SENDER_PASSWORD=你的邮箱授权码
      RECEIVER_EMAILS=收件人1@example.com,收件人2@example.com
-     
+
      # 运行时间配置
      SCHEDULE_TIME=09:00
      ```
@@ -55,8 +69,21 @@
 
 - `DEBUG_MODE`：调试模式，设置为 True 时程序会立即执行一次任务
 - `DAYS_BACK`：获取最近几天的论文
+
+**PDF处理配置：**
+- `DOWNLOAD_PDFS`：是否下载PDF文件（默认为True）
+- `FULL_TEXT_ANALYSIS`：是否使用全文分析（默认为True）
+- `PDF_MAX_PAGES`：处理PDF的最大页数（默认为20）
+- `PDF_BASE_DIR`：PDF文件保存的基础目录（默认为./papers）
+- `PDF_DB_FILE`：存储PDF文件位置的数据库文件（默认为./papers/pdf_database.json）
+- `ORGANIZE_BY_DATE`：是否按日期组织文件夹（默认为True）
+- `USE_OCR_FALLBACK`：当PDF文本提取失败时是否使用OCR（默认为False）
+
+**Gemini API配置：**
 - `GEMINI_API_KEY_1`, `GEMINI_API_KEY_2`, ...：Gemini API 密钥，支持多个密钥轮换使用
 - `GEMINI_MODEL`：使用的 Gemini 模型名称
+
+**邮件配置：**
 - `SMTP_SERVER`：邮件服务器地址
 - `SMTP_PORT`：邮件服务器端口
 - `SENDER_EMAIL`：发件人邮箱
@@ -84,9 +111,12 @@
 
 - `main.py`：主程序入口，包含邮件发送和定时任务功能
 - `arxiv_scraper.py`：arXiv 论文获取模块
-- `summarizer.py`：论文总结生成模块，使用 Gemini AI
+- `pdf_downloader.py`：PDF下载模块
+- `pdf_extractor.py`：PDF文本提取模块
+- `summarizer.py`：论文总结生成和评分模块，使用 Gemini AI
 - `config.py`：项目配置文件
 - `.env`：环境变量配置文件（包含敏感信息）
+- `.env.example`：环境变量配置示例文件
 - `requirements.txt`：项目依赖列表
 
 ## 注意事项
@@ -99,4 +129,4 @@
 
 ## 许可证
 
-MIT License 
+MIT License
